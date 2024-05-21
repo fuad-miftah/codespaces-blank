@@ -1,0 +1,85 @@
+module;
+
+import messages.*;
+import lib.icmf.{ send_message };
+
+
+entity order {
+    key tx: byte_array = op_context.transaction.tx_rid;
+    index customer_id: integer;
+    address: text;
+}
+
+entity product {
+    id: integer;
+}
+
+entity product_order {
+    key order, product;
+    quantity: integer;
+}
+
+operation register_product(id: integer) {
+    create product ( id );
+}
+
+query list_orders() {
+    val ordered_products = product_order @* {} (.order.rowid.to_integer(), (product_id = .product.id, quantity = .quantity));
+    return group_products_by_id(ordered_products);
+}
+
+function group_products_by_id(value: list<(integer, (product_id:integer, quantity:integer))>) {
+    val result = map<integer, list<(product_id:integer, quantity:integer)>>();
+    for ((k, v) in value) {
+        if (k not in result) result[k] = list<(product_id:integer, quantity:integer)>();
+        result[k].add(v);
+    }
+    return result @* {} (order_id = $[0], details = $[1]);
+}
+
+query get_order_id(tx: byte_array) = order @? { tx }.rowid;
+
+query get_order_details(id: integer)
+    = product_order @* { .order.rowid == rowid(id) } ( order_id = .order.rowid, product_id = .product.id, quantity = .quantity );
+
+query get_order_details_by_tx(tx: byte_array) = get_order_details(require(get_order_id(tx)?.to_integer()));
+
+
+operation make_customer_order(details: msg.order_details) {
+    val order = create order (
+        customer_id = details.customer_id,
+        address = details.address
+    );
+    val product_to_ids = product @* { .id in details.products @* { }.id }( $, .id );
+
+    val ordered_products = list<struct<product_order>>();
+    for ((p, id) in product_to_ids) {
+        ordered_products.add(
+        struct<product_order>(
+            order = order,
+            product = p,
+            quantity = details.products @ { .id == id }.quantity
+        )
+        );
+    }
+
+    create product_order ( ordered_products );
+
+    val order_id = order.rowid.to_integer();
+    send_production_order(order_id, details.products);
+    send_new_delivery(order_id, details.customer_id, details.address);
+}
+
+function send_production_order(order_id: integer, products: list<msg.product>) {
+    send_message(
+        topic.PRODUCTION_ORDER,
+        msg.production_details(order_id, products).to_gtv()
+    );
+}
+
+function send_new_delivery(order_id: integer, customer_id: integer, shipping_address: text) {
+    send_message(
+        topic.NEW_DELIVERY,
+        msg.delivery_details(order_id, customer_id, shipping_address).to_gtv()
+    );
+}

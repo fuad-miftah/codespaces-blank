@@ -1,0 +1,38 @@
+module;
+
+namespace topic {
+    val PRODUCTION_ORDER = "L_production";
+    val NEW_DELIVERY = "L_delivery";
+    val SHIPMENT_READY = "L_shipment_ready";
+}
+
+namespace msg {
+    struct order_details {
+        customer_id: integer;
+        address: text;
+        products: list<product>;
+    }
+
+    struct product {
+        id: integer;
+        quantity: integer;
+    }
+
+    // Order -> Factory
+    struct production_details {
+        order_id: integer;
+        products: list<product>;
+    }
+
+    // Order -> Delivery
+    struct delivery_details {
+        order_id: integer;
+        shipping_address: text;
+        customer_id: integer;
+    }
+
+    // Factory -> Delivery
+    struct shipment_ready {
+        order_id: integer;
+    }
+}

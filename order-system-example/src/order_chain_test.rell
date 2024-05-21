@@ -1,0 +1,23 @@
+@test module;
+
+import order_chain.*;
+import messages.*;
+
+function test_make_order() {
+    val test_order = msg.order_details(0, "MyStreet 12", [msg.product(id = 12, quantity = 110)]);
+
+    rell.test.tx().op(register_product(12)).run();
+    rell.test.tx().op(make_customer_order(test_order)).run();
+    val order_id = order @ { } ( .rowid.to_integer() );
+    assert_events(
+        (
+        "icmf_message", 
+        (topic = topic.PRODUCTION_ORDER, 
+        body = msg.production_details(order_id, test_order.products).to_gtv())
+            .to_gtv_pretty()),
+        ("icmf_message", 
+        (topic = topic.NEW_DELIVERY, 
+        body = msg.delivery_details(order_id, customer_id = test_order.customer_id, test_order.address).to_gtv())
+            .to_gtv_pretty())
+    );
+}

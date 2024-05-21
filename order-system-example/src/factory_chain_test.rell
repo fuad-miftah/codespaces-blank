@@ -1,0 +1,21 @@
+@test module;
+
+import factory_chain.*;
+import lib.icmf.test.{ test_icmf_message };
+
+function test_manufacture_order() {
+    rell.test.tx().op(
+            test_icmf_message(
+                x"",
+                PRODUCTION_ORDER,
+                msg.production_details(
+                    order_id = 1,
+                    products = [msg.product(id = 2, quantity = 10)]
+                )
+                    .to_gtv()
+            )
+        )
+        .run();
+    assert_events(("icmf_message", (topic = SHIPMENT_READY, body = msg.shipment_ready(1).to_gtv()).to_gtv_pretty()));
+    assert_equals(manufactured_product @ { .id == 2 }.quantity, 10);
+}

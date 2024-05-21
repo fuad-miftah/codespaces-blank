@@ -1,0 +1,68 @@
+definitions:
+  - &sender # Configuration for a chain that sends messages
+    gtx:
+      modules:
+        - "net.postchain.d1.icmf.IcmfSenderGTXModule"
+  - &receiver # Base configuration for a chain that receives messages
+    gtx:
+      modules:
+        - "net.postchain.d1.icmf.IcmfReceiverGTXModule"
+    sync_ext:
+      - "net.postchain.d1.icmf.IcmfReceiverSynchronizationInfrastructureExtension"
+  - &sender_receiver # Base configuration for a chain that will both send and receive messages
+    gtx:
+      modules:
+        - "net.postchain.d1.icmf.IcmfSenderGTXModule"
+        - "net.postchain.d1.icmf.IcmfReceiverGTXModule"
+    sync_ext:
+      - "net.postchain.d1.icmf.IcmfReceiverSynchronizationInfrastructureExtension"
+
+blockchains:
+  # order-system-example:
+  #   module: main
+  order-chain:
+    module: order_chain
+    config:
+      <<: *sender
+    test:
+      modules:
+        - order_chain_test
+  delivery-chain:
+    module: delivery_chain
+    config:
+      <<: *receiver
+      icmf:
+        receiver:
+          local:
+            - topic: "L_delivery"
+              brid: null
+            - topic: "L_shipment_ready"
+              brid: null
+    test:
+      modules:
+        - delivery_chain_test
+  factory-chain:
+    module: factory_chain
+    config:
+      <<: *sender_receiver
+      icmf:
+        receiver:
+          local:
+            - topic: "L_production"
+              brid: null
+    test:
+      modules:
+        - factory_chain_test
+compile:
+  rellVersion: 0.13.5
+database:
+  schema: schema_order_system_example
+test:
+  modules:
+    - test
+libs:
+  icmf:
+    registry: https://gitlab.com/chromaway/core/directory-chain
+    path: src/messaging/icmf
+    tagOrBranch: 1.29.0
+    rid: x"19D6BC28D527E6D2239843608486A84F44EDCD244E253616F13D1C65893F35F6"

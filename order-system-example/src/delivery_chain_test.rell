@@ -1,0 +1,33 @@
+@test module;
+
+import delivery_chain.*;
+import lib.icmf.test.{ test_icmf_message };
+
+function test_make_delivery() {
+    rell.test.tx().op(
+            test_icmf_message(
+                x"",
+                NEW_DELIVERY,
+                msg.delivery_details(
+                    order_id = 1,
+                    customer_id = 10,
+                    shipping_address = "MyStreet 101"
+                )
+                    .to_gtv()
+            )
+        )
+        .run();
+    assert_equals(delivery @ { .order_id == 1 }.shipping_state, shipping_state.CREATED);
+    rell.test.tx().op(accept_delivery(1)).run_must_fail("must be dispatched before");
+    rell.test.tx().op(
+            test_icmf_message(
+                x"",
+                SHIPMENT_READY,
+                msg.shipment_ready(order_id = 1)
+                    .to_gtv()
+            )
+        )
+        .run();
+    assert_equals(delivery @ { .order_id == 1 }.shipping_state, shipping_state.DISPATCHED);
+    rell.test.tx().op(accept_delivery(1)).run();
+}

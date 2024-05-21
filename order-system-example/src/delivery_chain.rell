@@ -1,0 +1,59 @@
+module;
+
+import messages. { topic.*, msg };
+import lib.icmf.receiver.{ receive_icmf_message };
+
+enum shipping_state {
+    CREATED,
+    DISPATCHED,
+    DELIVERED
+}
+
+entity delivery {
+    key order_id: integer;
+    index customer_id: integer;
+    shipping_address: text;
+    mutable shipping_state;
+}
+
+// orders that can be dispatched but have not yet been created
+entity pending_delivery {
+    key order_id: integer;
+}
+
+operation accept_delivery(order_id: integer) {
+    require(delivery @ { order_id }.shipping_state == shipping_state.DISPATCHED, "Order must be dispatched before it can be completed");
+    update delivery @ { order_id } ( shipping_state = shipping_state.DELIVERED);
+}
+
+query get_delivery_details(order_id: integer) = delivery @* { order_id } ($.to_struct());
+
+query list_deliveries() = delivery @* {} ($.to_struct());
+
+@extend(receive_icmf_message)
+function (sender: byte_array, topic: text, body: gtv) {
+    when (topic) {
+        NEW_DELIVERY -> handle_new_delivery(msg.delivery_details.from_gtv(body));
+        SHIPMENT_READY -> handle_shipment_ready(msg.shipment_ready.from_gtv(body));
+        else -> require(false, "Message type %s not handled".format(topic));
+    }
+}
+
+function handle_new_delivery(msg: msg.delivery_details) {
+    val state = pending_delivery @? { msg.order_id } (shipping_state.DISPATCHED) ?: shipping_state.CREATED;
+    create delivery(
+        order_id = msg.order_id,
+        customer_id = msg.customer_id,
+        shipping_address = msg.shipping_address,
+        shipping_state = state
+    );
+    delete pending_delivery @? { msg.order_id };
+}
+
+function handle_shipment_ready(msg: msg.shipment_ready) {
+    if (not exists(delivery @? { .order_id == msg.order_id })) {
+        create pending_delivery ( msg.order_id );
+    } else {
+        update delivery @ { .order_id == msg.order_id } ( shipping_state = shipping_state.DISPATCHED );
+    }
+}
