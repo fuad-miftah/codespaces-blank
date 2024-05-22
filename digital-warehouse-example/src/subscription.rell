@@ -1,0 +1,27 @@
+module;
+
+struct subscription {
+    account_id: pubkey;
+    period;
+}
+
+enum period {
+    WEEK,
+    MONTH,
+}
+
+function period_price(period): integer {
+    return when (period) {
+        MONTH -> 90;
+        else -> 30;
+    };
+}
+
+val MILLIS_IN_A_DAY = 24 * 60 * 60 * 1000;
+
+function period_to_millis(period): integer {
+    return MILLIS_IN_A_DAY * when (period) {
+        MONTH -> 30;
+        else -> 7;
+    } ;
+}

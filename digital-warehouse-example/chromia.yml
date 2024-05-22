@@ -1,0 +1,33 @@
+blockchains:
+  # digital-warehouse-example:
+  #   module: main
+  subscription-chain:
+    module: subscription_chain
+    test:
+      modules:
+        - subscription_chain_test
+  digital-warehouse-chain:
+    module: digital_warehouse_chain
+    config:
+      gtx:
+        modules:
+          - net.postchain.d1.iccf.IccfGTXModule
+    moduleArgs:
+      digital_warehouse_chain:
+        warehouse_id: 1
+    test:
+      modules:
+        - digital_warehouse_chain_test
+compile:
+  rellVersion: 0.13.5
+database:
+  schema: digital_warehouse_schema
+test:
+  modules:
+    - test
+libs:
+  iccf:
+    registry: https://gitlab.com/chromaway/core/directory-chain
+    path: src/iccf
+    tagOrBranch: 1.32.2
+    rid: x"1D567580C717B91D2F188A4D786DB1D41501086B155A68303661D25364314A4D"

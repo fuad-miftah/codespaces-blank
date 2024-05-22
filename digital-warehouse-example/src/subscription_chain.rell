@@ -1,0 +1,51 @@
+module;
+
+import subscription.*;
+
+entity account {
+    key id: pubkey;
+    mutable balance: integer = 10000;
+}
+
+@log
+entity receipt {
+    // We don't reference account entity here since this entity may be removed
+    account_id: pubkey;
+    amount: integer;
+    period;
+    blockchain_rid: byte_array;
+    index account_id, blockchain_rid;
+}
+
+function get_or_create_account(id: pubkey) {
+    require(op_context.is_signer(id));
+    return account @? { id } ?: create account(id);
+}
+
+operation subscribe(blockchain_rid: byte_array, subscription) {
+    val account = get_or_create_account(subscription.account_id);
+    val subscription_fee = period_price(subscription.period);
+    require(account.balance >= subscription_fee, "Insufficient funds");
+    account.balance-=subscription_fee;
+    create receipt (
+        account_id = subscription.account_id,
+        subscription_fee,
+        subscription.period,
+        blockchain_rid
+    );
+}
+
+query get_receipts(account_id: pubkey?, blockchain_rid: byte_array?, from: timestamp?)
+    = (receipt, account) @* {
+    if (account_id??) account.id == account_id else true,
+    account.id == receipt.account_id,
+    if (blockchain_rid??) .blockchain_rid == blockchain_rid else true,
+    if (from??) .transaction.block.timestamp >= from else true
+} (
+    receipt_id = .transaction.tx_rid,
+    account_id = account.id,
+    period = .period,
+    payment_amount = .amount,
+    blockchain_rid = .blockchain_rid,
+    timestamp = .transaction.block.timestamp
+);

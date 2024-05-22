@@ -1,0 +1,43 @@
+@test module;
+
+import digital_warehouse_chain.*;
+
+function test_grant_access() {
+    val certificate = subscription(
+        account_id = rell.test.pubkeys.alice,
+        period = period.WEEK
+    );
+    val tx = rell.test.tx();
+    val gtx = gtx_transaction(
+        body = gtx_transaction_body(
+            blockchain_rid = x"AB",
+            operations = [gtx_operation(name = "subscribe", args = [chain_context.blockchain_rid.to_gtv(), certificate.to_gtv()])],
+            signers = [rell.test.pubkeys.alice.to_gtv()]
+        ),
+        signatures = []
+    );
+
+    rell.test.set_next_block_time(1);
+    rell.test.block().run();
+    rell.test.tx()
+        .op(gtx_operation(name = "iccf_proof", args = [x"AB".to_gtv(), gtx.hash().to_gtv(), x"".to_gtv()]).to_test_op())
+        .op(authorize(gtx))
+        .sign(rell.test.keypairs.alice)
+        .run();
+
+    val account = account @? { rell.test.pubkeys.alice };
+    assert_not_null(account);
+    assert_equals(account.valid_until, 1 + period_to_millis(period.WEEK));
+
+    rell.test.tx()
+        .op(register_product_category(101, UNIT.LITRE))
+        .op(update_inventory(inventory_dto(product_category = 101, amount = 5000, "Received milk shipment from barn")))
+        .sign(rell.test.keypairs.alice)
+        .run();
+
+    val report = create_report(null, null);
+    assert_equals(report.warehouse_id, 1);
+    assert_equals(report.inventory[0].stock, 5000);
+    assert_equals(report.history[101].size(), 1);
+    assert_equals(report.history[101][0].comment, "Received milk shipment from barn");
+}

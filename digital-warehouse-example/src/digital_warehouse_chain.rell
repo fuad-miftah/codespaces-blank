@@ -1,0 +1,95 @@
+module;
+
+import lib.iccf;
+import subscription.*;
+
+entity account {
+    key id: pubkey;
+    mutable valid_until: timestamp = op_context.last_block_time;
+}
+
+entity inventory {
+    key product_category: integer;
+    UNIT;
+    mutable stock: integer = 0;
+}
+
+enum UNIT {
+    LITRE, PIECE, KILOGRAM
+}
+
+@log entity inventory_log {
+    // We don't reference the inventory entity here since this entity may be removed
+    product_category: integer;
+    amount: integer;
+    comment: text;
+}
+
+operation register_product_category(category: integer, UNIT) {
+    require_authenticated_signer();
+    create inventory(product_category = category, UNIT);
+}
+
+operation update_inventory(inventory_dto) {
+    require_authenticated_signer();
+    update inventory @ { .product_category == inventory_dto.product_category } (stock += inventory_dto.amount);
+    create inventory_log(
+        product_category = inventory_dto.product_category, 
+        amount = inventory_dto.amount,
+        comment = inventory_dto.comment
+        );
+}
+
+function require_authenticated_signer() {
+    require(op_context.get_signers().size() == 1, "Require exactly one signature");
+    val valid_until = account @? { op_context.get_signers()[0]}.valid_until;
+    require(exists(valid_until), "No account found");
+    require(op_context.last_block_time <= valid_until!!, "Subscription has expired");
+}
+struct inventory_dto {
+    product_category: integer;
+    amount: integer;
+    comment: text;
+}
+
+operation authorize(tx: gtx_transaction) {
+    iccf.make_transaction_unique(tx);
+    val args = iccf.extract_operation_args(tx, "subscribe", verify_signers = true);
+    require(byte_array.from_gtv(args[0]) == chain_context.blockchain_rid, "Wrong blockchain proof, found %s".format(chain_context.blockchain_rid));
+    val subscription = subscription.from_gtv(args[1]);
+    val account = get_or_create_account(subscription.account_id);
+    val new_expiration_date = max(op_context.last_block_time, account.valid_until) + period_to_millis(subscription.period);
+    account.valid_until = new_expiration_date;
+}
+
+function get_or_create_account(id: pubkey) {
+    require(op_context.is_signer(id));
+    return account @? { id } ?: create account(id);
+}
+
+struct module_args {
+    warehouse_id: integer;
+}
+
+query create_report(from: timestamp?, to: timestamp?) {
+    val current_inventory = inventory @* {} ($.to_struct());
+
+    val history = inventory_log @* { 
+        if (from??).transaction.block.timestamp >= from else true,
+        if (to??).transaction.block.timestamp < to else true,
+        .product_category in current_inventory @* {}( .product_category )
+        }(
+        $.to_struct()
+    );
+
+    return (warehouse_id = chain_context.args.warehouse_id, inventory = current_inventory, history = group_logs_by_product(history));
+}
+
+function group_logs_by_product(value: list<(struct<inventory_log>)>) {
+    val result = map<integer, list<struct<inventory_log>>>();
+    for (v in value) {
+        if (v.product_category not in result) result[v.product_category] = [];
+        result[v.product_category].add(v);
+    }
+    return result;
+}

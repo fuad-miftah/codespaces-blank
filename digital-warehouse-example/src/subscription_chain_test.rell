@@ -1,0 +1,22 @@
+@test module;
+
+import subscription_chain.*;
+
+val TEST_WAREHOUSE_CHAIN = x"ABAB";
+
+function test_create_subscription() {
+
+    rell.test.tx()
+        .op(subscribe(TEST_WAREHOUSE_CHAIN, subscription(rell.test.pubkeys.alice, period.WEEK)))
+        .sign(rell.test.keypairs.alice)
+        .run();
+
+    val test_account = account @? { rell.test.pubkeys.alice };
+
+    assert_not_null(test_account);
+    assert_equals(test_account.balance, 10000 - period_price(period.WEEK));
+    val receipts = get_receipts(test_account.id, null, null);
+    assert_equals(receipts.size(), 1);
+    assert_equals(receipts[0].payment_amount, 30);
+    assert_equals(receipts[0].blockchain_rid, TEST_WAREHOUSE_CHAIN);
+}
