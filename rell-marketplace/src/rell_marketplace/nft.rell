@@ -1,0 +1,68 @@
+entity nft {
+    key id: byte_array = op_context.transaction.tx_rid;
+    mutable owner: account;
+    index owner;
+}
+
+entity nft_card {
+    key nft;
+    strength: integer;
+    health: integer;
+}
+
+entity listed_nft {
+    key nft: nft;
+    mutable price: big_integer;
+    index listed_by: account;
+    listed_date: timestamp = op_context.last_block_time;
+}
+
+function mint_card(account) {
+    // Create a new NFT for the specified account
+    val nft = create nft(account);
+
+    // Extract seeds for randomness
+    val (health_seed, strength_seed) = extract_seeds();
+
+    // Generate random health and strength based on the provided seeds
+    val health = generate_health(health_seed);
+    val strength = generate_strength(strength_seed);
+    
+    // Create the NFT card with the generated attributes
+    create nft_card(
+        .nft = nft,
+        .strength = strength,
+        .health = health
+    );
+}
+
+// Generate a random integer within a specified range
+function random(high: integer, seed: integer): integer {
+    // Ensure high is not zero to avoid division by zero
+    if (high == 0) return 0;
+    
+    // Calculate the random value using the provided seed
+    return (op_context.last_block_time - op_context.block_height - op_context.op_index + seed) % high;
+}
+
+function extract_seeds() {
+    // Extract seeds for randomness from the transaction RID
+    val seeds = op_context.transaction.tx_rid.to_hex();
+    val health_seed: integer = integer.from_hex(seeds.sub(0, 4));
+    val strength_seed: integer = integer.from_hex(seeds.sub(4, 8));
+    return (health_seed, strength_seed);
+}
+
+// Generate random health within a specified range
+function generate_health(seed: integer): integer {
+    val rand = random(30, seed) + 1; // Generate a random value between 1 and 30
+    val baseline = 30; // Consistent baseline for all cards
+    return baseline + rand;
+}
+
+// Generate random strength within a specified range
+function generate_strength(seed: integer): integer {
+    val rand = random(30, seed) + 1; // Generate a random value between 1 and 30
+    val baseline = 50; // Consistent baseline for all cards
+    return baseline + rand * 2; // Adjust range to 50-110
+}

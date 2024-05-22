@@ -1,0 +1,22 @@
+operation buy_mystery_card() {
+    val account = auth.authenticate(is_strict = false);
+    Unsafe.transfer(account, dapp_meta.account, dapp_meta.asset, 100);   
+    mint_card(account);
+}
+
+operation list_nft(id: integer, price: big_integer) {
+    val account = auth.authenticate(is_strict = false);
+    val (nft, owner) = nft @ { .rowid == rowid(id) } ( $, .owner );
+    require(owner == account, "User must be owner of NFT");
+    create listed_nft ( nft, price, owner );
+}
+
+operation buy_nft(id: integer) {
+    val account = auth.authenticate(is_strict = false);
+    val (nft, owner, price) = listed_nft @ {
+        .nft.rowid == rowid(id)
+    } ( .nft, .listed_by, .price );
+    Unsafe.transfer(account, owner, dapp_meta.asset, price);
+    delete listed_nft @ { .nft.rowid == rowid(id) };
+    nft.owner = account;
+}

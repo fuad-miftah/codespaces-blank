@@ -1,0 +1,48 @@
+enum card_sorting { NONE, PRICE_HIGH, PRICE_LOW }
+
+query get_cards(amount: integer, card_sorting) 
+    = (listed_nft, nft_card) @* { 
+    listed_nft.nft == nft_card.nft
+} ( 
+    @omit @sort_desc when (card_sorting) {
+          PRICE_HIGH -> .price;
+          PRICE_LOW -> -.price;
+          else -> nft_card.rowid.to_integer()
+        },
+    listed_nft_card_dto (
+        price = listed_nft.price,
+        id = nft_card.nft.rowid.to_integer(),
+        card = nft_card.to_struct()
+    ) 
+) limit amount;
+
+struct listed_nft_card_dto {
+    id: integer;
+    price: big_integer;
+    card: struct<nft_card>;
+}
+
+query get_all_nfts() {
+    return nft_card @* {} ( nft_card_dto( 
+        strength = .strength, 
+        health = .health, 
+        owner_id = .nft.owner.id, 
+        nft_id = .nft.rowid ) );
+}
+
+struct nft_card_dto {
+    strength: integer;
+    health: integer;
+    owner_id: byte_array;
+    nft_id: rowid;
+}
+
+query get_all_accounts()
+{
+    return account @* {} ($.to_struct());
+}
+
+query get_all_balances()
+{
+    return balance @* {} ($.account.to_struct(), $.to_struct());
+}

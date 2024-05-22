@@ -1,0 +1,24 @@
+module;
+
+import lib.ft4.auth;
+import lib.ft4.accounts.{ account, _create_account_with_auth, create_account_with_auth, single_sig_auth_descriptor };
+import lib.ft4.assets. { asset, Unsafe, balance };
+
+object dapp_meta {
+    asset = Unsafe.register_asset("Collector Card", "CRD", 6, chain_context.blockchain_rid, "https://url-to-asset-icon");
+    account = _create_account_with_auth(single_sig_auth_descriptor(chain_context.args.dapp_account_signer, set(["A", "T"])), safe = false);
+}
+
+@extend(auth.auth_handler)
+function () = auth.add_auth_handler(
+  flags = ["T"]
+);
+
+operation create_user(pubkey) {
+    val account= create_account_with_auth(single_sig_auth_descriptor(pubkey, set(["A", "T"])));
+    Unsafe.mint(account, dapp_meta.asset, 1000);
+}
+
+struct module_args {
+    dapp_account_signer: pubkey;
+}
