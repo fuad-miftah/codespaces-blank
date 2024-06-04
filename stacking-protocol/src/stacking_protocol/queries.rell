@@ -1,0 +1,20 @@
+query get_all_accounts()
+{
+    return account @* {} ($.to_struct());
+}
+
+query get_all_balances()
+{
+    return balance @* {} ($.account.to_struct(), $.to_struct());
+}
+
+query get_all_nfts() {
+    return nft @* {} ( nft_dto( 
+        owner = .owner, 
+        balance = .balance ) );
+}
+
+struct nft_dto {
+    owner: account;
+    balance: integer;
+}

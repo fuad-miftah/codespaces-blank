@@ -1,0 +1,59 @@
+@test module;
+
+import main.*;
+
+val book_keeper = rell.test.keypair(
+    priv = x"DEE3B1414196653BF7FA621B2EEFC3146093B1932BA2ABFAEED830906D81972A",
+    pub = x"0359A8F2CE1BEF95F583169B7DF053AA227A93B2652B0A9C22975FEED638032610"
+);
+
+val bob = rell.test.keypairs.bob;
+
+function test_add_book() {
+    rell.test.tx()
+        .op(create_book("123", "Book1", "Author1"))
+        .op(create_book("124", "Book2", "Author2"))
+        .sign(book_keeper)
+        .run();
+
+    val all_books = book @* { };
+
+    assert_equals(all_books.size(), 2);
+    assert_equals(all_books[0].title, "Book1");
+    assert_equals(all_books[0].author, "Author1");
+}
+
+function test_add_book_as_non_admin() {
+    rell.test.tx()
+        .op(create_book("123", "Book1", "Author1"))
+        .sign(bob)
+        .run_must_fail();
+}
+
+function test_get_reviews_by_rating() {
+    rell.test.tx()
+        .op(create_book("123", "Book1", "Author1"))
+        .op(create_book_review("123", "Reviewer1", "ReviewText1", 4))
+        .op(create_book_review("123", "Reviewer2", "ReviewText2", 5))
+        .op(create_book_review("123", "Reviewer3", "ReviewText3", 4))
+        .op(create_book_review("123", "Reviewer4", "ReviewText4", 1))
+        .sign(book_keeper)
+        .run();
+    val reviews = get_reviews_by_rating(4);
+    assert_equals(reviews.size(), 2);
+}
+
+function test_get_sorted_reviews_by_rating() {
+    rell.test.tx()
+        .op(create_book("123", "Book1", "Author1"))
+        .op(create_book_review("123", "Reviewer1", "ReviewText1", 5))
+        .op(create_book_review("123", "Reviewer2", "ReviewText2", 2))
+        .op(create_book_review("123", "Reviewer3", "ReviewText3", 4))
+        .sign(book_keeper)
+        .run();
+    val reviews = get_all_reviews_for_book("123");
+    assert_equals(reviews.size(), 3);
+    assert_equals(reviews[0].rating, 5);
+    assert_equals(reviews[1].rating, 4);
+    assert_equals(reviews[2].rating, 2);
+}

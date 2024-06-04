@@ -1,0 +1,20 @@
+// operation buy_nft(buy_amount, nft_id) {
+//     val account = auth.authenticate(is_strict = false);
+//     val nft = nft @ { .rowid ==  rowid(nft_id) };
+//     total = buy_amount * nft.price;
+//     Unsafe.transfer(account, dapp_meta.account, dapp_meta.asset, total);   
+//     mint_nft(account);
+// }
+
+operation buy_nft(balance: integer) {
+    val account = auth.authenticate(is_strict = false);
+    Unsafe.transfer(account, dapp_meta.account, dapp_meta.asset, balance);
+    mint_nft(account, balance);
+}
+
+// operation stake_nft(id: integer, amount: integer) {
+//     val account = auth.authenticate(is_strict = false);
+//     val (nft, owner) = nft @ { .rowid == rowid(id) } ( $, .owner );
+//     require(owner == account, "User must be owner of NFT");
+//     create stakes ( nft, amount, owner );
+// }

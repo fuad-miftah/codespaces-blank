@@ -1,0 +1,45 @@
+entity nft {
+    key id: byte_array = op_context.transaction.tx_rid;
+    mutable owner: account;
+    index owner;
+    mutable balance: integer;
+}
+
+// entity nft_card {
+//     key nft;
+//     price: integer;
+// }
+
+// entity stakes{
+//     key id: byte_array;
+//     index stacked_by: account;
+//     index nft;
+//     stacked_at = op_context.last_block_time;
+//     amount: integer;
+//     yield_accured: integer;
+// }
+
+// entity unstake_request{
+//     key id: byte_array;
+//     index stakes;
+//     requested_at = op_context.last_block_time;
+//     status: text;
+// }
+
+// entity user_nft{
+//     key id: byte_array;
+//     index user: account;
+//     index nft;
+//     amount: integer;
+// }
+
+// function mint_nft(account) {
+//     val nft = create nft(account);
+// }
+
+function mint_nft(account, balance: integer) {
+    // val (nft, owner) = nft @ { .owner == account } ( $, .owner );  if token already exist add balance
+    create nft(.owner = account, .balance = balance);
+    
+    // create nft_card(.nft = nft, .price = price);
+}

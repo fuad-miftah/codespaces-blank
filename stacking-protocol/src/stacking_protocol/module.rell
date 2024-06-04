@@ -1,0 +1,20 @@
+module;
+
+import lib.ft4.assets. { asset, Unsafe, balance };
+import lib.ft4.auth;
+import lib.ft4.accounts.{ account, _create_account_with_auth, create_account_with_auth, single_sig_auth_descriptor };
+
+
+@extend(auth.auth_handler)
+function () = auth.add_auth_handler(
+  flags = ["T"]
+);
+
+object dapp_meta {
+    asset = Unsafe.register_asset("Chromia Token", "CHR", 6, chain_context.blockchain_rid, "https://url-to-asset-icon");
+    account = _create_account_with_auth(single_sig_auth_descriptor(chain_context.args.dapp_account_signer, set(["A", "T"])), safe = false);
+} 
+
+struct module_args {
+    dapp_account_signer: pubkey;
+}

@@ -1,0 +1,9 @@
+module;
+
+import lib.ft4.accounts.{ Unsafe, single_sig_auth_descriptor };
+import news_feed.*;
+
+operation create_user(name, pubkey) {
+  val account_id = Unsafe.create_account_with_auth(single_sig_auth_descriptor(pubkey, set(["MySession"])));
+  create user ( name, pubkey, account @ { account_id } );
+}

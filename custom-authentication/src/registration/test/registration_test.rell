@@ -1,0 +1,46 @@
+@test module;
+
+import registration.*;
+import lib.ft4.accounts.external.{ add_auth_descriptor };
+import lib.ft4.test.utils.{ ft_auth_operation_for, evm_auth_operation_for, evm_sign };
+
+val evm_address = x"1337c28e95ce85175af66353fecccd676e3d273a";
+val evm_privkey = x"18e2d37cd5b51555c52d454c22608dee5e7151384f2d7b7bc21616e2eadc3e6f";
+
+function test_evm_registration() {
+    val alice_session_1 = rell.test.keypairs.alice;
+    val signature = evm_sign(evm.get_register_message(evm_address), evm_privkey);
+
+    // Register account using EVM address
+    rell.test.tx()
+        .op(register_account("Alice", evm_address, signature))
+        .sign(alice_session_1)
+        .run();
+
+    assert_equals(user @ { } ( @sum 1 ), 1);
+
+    rell.test.tx()
+        .op(ft_auth_operation_for(alice_session_1.pub))
+        .op(make_post("My first post"))
+        .sign(alice_session_1)
+        .run();
+    assert_equals(post @ { } ( @sum 1 ), 1);
+
+    val alice_session_2 = rell.test.keypairs.bob;
+    val session_auth_desc = single_sig_auth_descriptor(alice_session_2.pub, set(["MySession"]));
+
+    // Add a session token
+    rell.test.tx()
+        .op(evm_auth_operation_for(evm_privkey, "ft4.add_auth_descriptor", [session_auth_desc.to_gtv()]))
+        .op(add_auth_descriptor(session_auth_desc))
+        .sign(alice_session_2)
+        .run();
+
+    // Make another post using the session key
+    rell.test.tx()
+        .op(ft_auth_operation_for(alice_session_2.pub))
+        .op(make_post("My second post"))
+        .sign(alice_session_2)
+        .run();
+    assert_equals(post @ { } ( @sum 1 ), 2);
+}

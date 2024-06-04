@@ -1,0 +1,101 @@
+module;
+
+struct tx_op {
+  op_name: text;
+  op_args: list<gtv>;
+}
+
+struct tx_body {
+  tx_rid: byte_array;
+  ops: list<tx_op>;
+  signers: list<byte_array>;
+}
+
+struct tx {
+  tx_body;
+  signatures: list<byte_array>;
+}
+
+struct module_args {
+  admin_pubkey: byte_array;
+}
+
+entity book {
+  key isbn: text;
+  mutable title: text;
+  author: text;
+}
+
+entity book_review {
+  index book: book;
+  reviewer_name: text;
+  review: text;
+  rating: integer;
+}
+
+struct book_review_dto {
+  book: struct<book>;
+  reviewer_name: text;
+  review: text;
+  rating: integer;
+}
+
+operation create_book(isbn: text, title: text, author: text) {
+  val adminPubkey = chain_context.args.admin_pubkey;
+  require(op_context.is_signer(adminPubkey), "Only admin can create books");
+
+  create book ( .isbn = isbn, .title = title, .author = author );
+}
+
+operation update_book(isbn: text, title: text){
+  val adminPubkey = chain_context.args.admin_pubkey;
+  require(op_context.is_signer(adminPubkey), "Only admin can update books");
+
+  update book @ { .isbn == isbn }( .title = title );
+}
+
+query get_all_books() {
+  return book @* { } (
+    .isbn,
+    .title,
+    .author
+  );
+}
+
+operation create_book_review(isbn: text, reviewer_name: text, review: text, rating: integer) {
+  val book = require(book @? { .isbn ==  isbn }, "Book with isbn %s not found".format(isbn));
+  create book_review (
+    book,
+    reviewer_name,
+    review,
+    rating
+  );
+}
+
+query get_all_reviews_for_book(isbn: text) {
+  require(book @? { .isbn ==  isbn }, "Book with isbn %s not found".format(isbn));
+  val reviews = book_review @* { .book.isbn == isbn } (
+    @omit @sort_desc .rating, // Sort on rating, but omit this field in the result.
+    book_review_dto(
+      book = .book.to_struct(),
+      .reviewer_name,
+      .review,
+      .rating
+    )
+  );
+  return reviews;
+}
+
+query get_reviews_by_rating(rating: integer) {
+  return book_review @* { .rating == rating } (
+    .book.to_struct(),
+    .reviewer_name,
+    .review,
+    .rating
+  );
+}
+
+query get_transactions() {
+  val txs = transaction @* { } ( gtv.from_bytes(.tx_data) );
+  return list<tx>.from_gtv(txs.to_gtv());
+}

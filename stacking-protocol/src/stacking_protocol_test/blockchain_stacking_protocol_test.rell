@@ -1,0 +1,30 @@
+@test module;
+
+import stacking_protocol.*;
+import lib.ft4.assets.external.*;
+import lib.ft4.accounts.external.*;
+import lib.ft4.test.utils. { ft_auth_operation_for };
+
+function test_list_and_buy_nft() {
+    val alice = rell.test.keypairs.alice;
+    val trudy = rell.test.keypairs.trudy;
+    val economy_account = rell.test.keypairs.frank;
+    print("value");
+    rell.test.tx()
+        .op(create_user(alice.pub)).sign(alice)
+        .op(create_user(trudy.pub)).sign(trudy)
+        .run();
+    rell.test.tx()
+        .op(ft_auth_operation_for(alice.pub))
+        .op(buy_nft(100)).sign(alice)
+        .run();
+
+    val alice_acc = get_account(alice.pub);
+
+    assert_equals(get_asset_balance(alice_acc, dapp_meta.asset.id)!!.amount, 900);
+}
+
+function get_account(pubkey) {
+    val response = get_accounts_by_signer(pubkey, 1, null);
+    return list<(id: byte_array)>.from_gtv_pretty(response.data.to_gtv())[0].id;
+}

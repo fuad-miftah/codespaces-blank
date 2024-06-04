@@ -1,0 +1,167 @@
+@test module;
+
+import ^.test_operations.{ create_user };
+
+// import main.*;
+// import lib.ft4.test.utils.{ ft_auth_operation_for };
+// import lib.ft4.accounts;
+
+// val alice = rell.test.pubkeys.alice;
+// val bob = rell.test.pubkeys.bob;
+
+// function test_create_entities() {
+//     // Test the creation of two users: Alice and Bob
+//     rell.test.tx()
+//         .op(create_user("Alice", alice))
+//         .op(create_user("Bob", bob))
+//         .run();
+
+//     // Check if there are two users in the user table
+//     assert_equals(user @ { } (@sum 1), 2);
+
+//     // Alice follows Bob and makes a post
+//     rell.test.tx()
+//         .op(follow_user(alice, bob))
+//         .op(make_post(alice, "My post"))
+//         .run();
+
+//     // Check if there is one follower and one post
+//     assert_equals(follower @ { } (@sum 1), 1);
+//     assert_equals(post @ { } (@sum 1), 1);
+
+//     // Alice unfollows Bob and no followers should now exist
+//         rell.test.tx()
+//         .op(unfollow_user(alice, bob))
+//         .run();
+//     assert_equals(follower @ { } (@sum 1), 0);
+// }
+
+// function test_user_name() {
+//     rell.test.tx()
+//         .op(create_user("Alice", alice))
+//         .run();
+//     assert_equals(get_user_name(alice), "Alice#02466");
+//     val users_result = get_users(0, 20);
+//     assert_equals(users_result.pointer, 1);
+//     assert_equals(users_result.users.size(), 1);
+//     assert_true(users_result.users @* {} (.name).contains("Alice#02466"));
+// }
+
+val charlie = rell.test.pubkeys.charlie;
+
+// function test_follower_calculation() {
+//     rell.test.tx()
+//         .op(create_user("Alice", alice))
+//         .op(create_user("Bob", bob))
+//         .op(create_user("Charlie", charlie))
+//         .run();
+
+//     rell.test.tx()
+//         .op(follow_user(alice, bob))
+//         .op(follow_user(alice, charlie))
+//         .run();
+
+//     assert_true(is_following(bob, alice));
+//     assert_true(is_following(charlie, alice));
+//     assert_equals(get_following_count(alice), 2);
+//     assert_equals(get_following_count(bob), 0);
+
+//     assert_equals(get_followers_count(alice), 0);
+//     assert_equals(get_followers_count(bob), 1);
+// }
+
+// function test_pagination_of_posts() {
+//     rell.test.tx()
+//         .op(create_user("Alice", alice))
+//         .op(create_user("Bob", bob))
+//         .run();
+//     rell.test.tx().op(follow_user(alice, bob)).run();
+
+//     for (i in range(5)) {
+//         rell.test.tx().op(make_post(bob, "Content %d".format(i))).run();
+//     }
+
+//     val initial_posts = get_posts(alice, 0, 4);
+//     assert_equals(initial_posts.pointer, 4);
+//     assert_equals(initial_posts.posts.size(), 4);
+//     val last_posts = get_posts(alice, initial_posts.pointer, 4);
+//     assert_equals(last_posts.pointer, 5);
+//     assert_equals(last_posts.posts.size(), 1);
+// }
+// val alice_kp = rell.test.keypairs.alice; // <--
+// val bob_kp = rell.test.keypairs.bob;
+// val charlie_kp = rell.test.keypairs.charlie;
+
+// function test_create_entities() {
+//     rell.test.tx()
+//         .op(create_user("Alice", alice))
+//         .op(create_user("Bob", bob))
+//         .run();
+//     assert_equals(user @ { } (@sum 1), 2);
+//     rell.test.tx()
+//         .op(follow_user(alice, bob))
+//         .op(make_post(alice, "My post"))
+//         .sign(alice_kp)                  // <--
+//         .run();
+//     assert_true(is_following(alice, bob));
+//     assert_equals(follower @ { } (@sum 1), 1);
+//     assert_equals(post @ { } (@sum 1), 1);
+//     rell.test.tx()
+//         .op(unfollow_user(alice, bob))
+//         .sign(alice_kp)                  // <--
+//         .run();
+//     assert_false(is_following(alice, bob));
+//     assert_equals(follower @ { } (@sum 1), 0);
+// }
+
+// function test_create_entities() {
+//     rell.test.tx()
+//         .op(create_user("Alice", alice))
+//         .op(create_user("Bob", bob))
+//         .run();
+//     assert_equals(user @ { } (@sum 1), 2);
+//     rell.test.tx()
+//         .op(ft_auth_operation_for(alice)) // Auth operation
+//         .op(follow_user(bob))             // Argument removed
+//         .op(ft_auth_operation_for(alice)) // Auth operation
+//         .op(make_post("My post"))         // Argument removed
+//         .sign(alice_kp)
+//         .run();
+//     assert_true(is_following(alice, bob));
+//     assert_equals(follower @ { } (@sum 1), 1);
+//     assert_equals(post @ { } (@sum 1), 1);
+// }
+
+// function test_input_verification() {
+//     rell.test.tx()
+//         .op(create_user("Alice", alice))
+//         .op(create_user("Bob", bob)).run();
+
+//     // Bob cannot impersonate alice
+//     rell.test.tx()
+//         .op(ft_auth_operation_for(alice)) // <-- malicious auth operation
+//         .op(follow_user(bob))             // <-- argument removed
+//         .sign(bob_kp)
+//         .run_must_fail();
+//     rell.test.tx()
+//         .op(ft_auth_operation_for(alice))     // <-- malicious auth operation
+//         .op(make_post("My malicous post"))    // <-- argument removed
+//         .sign(bob_kp)
+//         .run_must_fail();
+
+//     // Alice cannot follow non-existing charlie
+//     val f1 = rell.test.tx()
+//         .op(ft_auth_operation_for(alice))  // <-- auth operation
+//         .op(follow_user(charlie))          // <-- argument removed
+//         .sign(alice_kp)
+//         .run_must_fail();
+//     assert_true(f1.message.contains("does not exist"));
+
+//     // Charlie cannot create a post since he does not exist
+//     val f2 = rell.test.tx()
+//         //.op(ft_auth_operation_for(charlie))   // <-- Cannot create auth operation
+//         .op(make_post("My secret post"))        // <-- argument removed
+//         .sign(charlie_kp)
+//         .run_must_fail();
+//     assert_true(f2.message.contains("Expected at least two operations"));
+// }
